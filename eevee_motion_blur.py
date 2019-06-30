@@ -3,11 +3,12 @@ bl_info = {
     "author": "Pablo Gentile",
     "version": (0, 1),
     "blender": (2, 80, 0),
-    "location": "Properties > Render > Full Eevee Motion Blur",
+    "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
     "warning": "",
-    "wiki_url": "",
-    "category": "Render",
+    "wiki_url": "https://github.com/g3ntile/eevee_motion_blur/wiki",
+    "tracker_url": "https://github.com/g3ntile/eevee_motion_blur",
+    "category": "Render"
 }
 
 
@@ -21,7 +22,7 @@ C = bpy.context
 D = bpy.data
 
 # exec time
-startTime = datetime.now()
+
 
 # FUNCTIONS
 # ###################################
@@ -64,8 +65,8 @@ def mbCompositorSetup():
 def renderToArray(subfr):
     """Takes the output of a Viewer node and dumps it to a numpy array"""
     # move playhead
-    C.scene.frame_set(subfr)
-    # print(C.scene.frame_current)
+    bpy.context.scene.frame_set(subfr)
+    # print(bpy.context.scene.frame_current)
     # render
     bpy.ops.render.render()
     # collect image
@@ -78,8 +79,10 @@ def renderToArray(subfr):
 
 # ###################################
 # fn render with MB
-def renderMBx1fr(realframe=bpy.context.scene.frame_current, shutter_mult = bpy.context.scene.eevee.motion_blur_shutter, samples=bpy.context.scene.eevee.motion_blur_samples):
+def renderMBx1fr(realframe, shutter_mult, samples):
     """Renders one frame with motion blur and saves to output folder"""
+    # timer
+    startTime = datetime.now()
     
     # setup compositor
     mbCompositorSetup()
@@ -103,28 +106,28 @@ def renderMBx1fr(realframe=bpy.context.scene.frame_current, shutter_mult = bpy.c
     print("samples ratio: " + str(subframe_ratio))
 
     # where to save the files
-    myRenderFolder = C.scene.render.filepath
+    myRenderFolder = bpy.context.scene.render.filepath
     print("output path: " + myRenderFolder)
 
     # factor to scale the size of render
-    resolution_factor = C.scene.render.resolution_percentage/100
+    resolution_factor = bpy.context.scene.render.resolution_percentage/100
     # effective render resolution
-    renderWidth = round(C.scene.render.resolution_x * resolution_factor)
-    renderHeight = round(C.scene.render.resolution_y * resolution_factor)
+    renderWidth = round(bpy.context.scene.render.resolution_x * resolution_factor)
+    renderHeight = round(bpy.context.scene.render.resolution_y * resolution_factor)
     # gamma de la imagen final
     mygamma = 2.2
     # Rebake: true for recalculate all bakes after the insertion of subframes, for better accuracy
     rebake = False
 
     # Original values backup
-    origFrameStart = C.scene.frame_start
-    origFrameEnd = C.scene.frame_end
-    origFrameRate = C.scene.render.fps
+    origFrameStart = bpy.context.scene.frame_start
+    origFrameEnd = bpy.context.scene.frame_end
+    origFrameRate = bpy.context.scene.render.fps
 
     # Start
     # Disable camera Motion blur
     orig_mb = bpy.context.scene.eevee.use_motion_blur
-    C.scene.eevee.use_motion_blur = False
+    bpy.context.scene.eevee.use_motion_blur = False
 
 
     #### inicializa la imagen 
@@ -137,15 +140,15 @@ def renderMBx1fr(realframe=bpy.context.scene.frame_current, shutter_mult = bpy.c
     num_pixels = len(image_object.pixels)
 
     # Expand the timeline to render subframes
-    # C.scene.frame_end *= fr_multiplier #obsolete for 1 frame
-    C.scene.render.fps *= fr_multiplier
-    C.scene.render.frame_map_old = 1
-    C.scene.render.frame_map_new = fr_multiplier
+    # bpy.context.scene.frame_end *= fr_multiplier #obsolete for 1 frame
+    bpy.context.scene.render.fps *= fr_multiplier
+    bpy.context.scene.render.frame_map_old = 1
+    bpy.context.scene.render.frame_map_new = fr_multiplier
 
     # Set expanded render variables
-    ###expFrameStart = C.scene.frame_start
-    ###expFrameEnd = C.scene.frame_end
-    ###expFrameRate = C.scene.render.fps
+    ###expFrameStart = bpy.context.scene.frame_start
+    ###expFrameEnd = bpy.context.scene.frame_end
+    ###expFrameRate = bpy.context.scene.render.fps
     # inicializa el array con la imagen a procesar
     #myrender_arr = np.zeros(shape=(num_pixels))
     # llena un array con el ratio para hacer average poder multiplicarlo
@@ -194,32 +197,35 @@ def renderMBx1fr(realframe=bpy.context.scene.frame_current, shutter_mult = bpy.c
 
 
     # revert to previous values
-    #C.scene.frame_end /= fr_multiplier
-    #C.scene.render.fps /= fr_multiplier
+    #bpy.context.scene.frame_end /= fr_multiplier
+    #bpy.context.scene.render.fps /= fr_multiplier
 
 
     # Restore the timeline 
-    ###C.scene.frame_end /= fr_multiplier
-    C.scene.render.fps /= fr_multiplier
-    C.scene.render.frame_map_old = 100
-    C.scene.render.frame_map_new = 100
+    ###bpy.context.scene.frame_end /= fr_multiplier
+    bpy.context.scene.render.fps /= fr_multiplier
+    bpy.context.scene.render.frame_map_old = 100
+    bpy.context.scene.render.frame_map_new = 100
     # Restore camera Motion blur
-    C.scene.eevee.use_motion_blur = orig_mb
-    C.scene.frame_current = realframe
+    bpy.context.scene.eevee.use_motion_blur = orig_mb
+    bpy.context.scene.frame_current = realframe
 
     print("EMB Render frame "+ str(realframe) + " completed in " + str( datetime.now() - startTime)) 
     return{'FINISHED'}
 
 
 # fn render sequence
-def renderMB_sequence(startframe = bpy.context.scene.frame_start , endframe = bpy.context.scene.frame_end):
+def renderMB_sequence(startframe, endframe, context):
     # exec time
     startTime = datetime.now()
 
-    startframe = C.scene.frame_start
-    endframe = C.scene.frame_end
-    for frame in range(startframe, endframe+1, bpy.context.scene.frame_step):
-        renderMBx1fr(frame)
+    startframe = context.scene.frame_start
+    endframe = context.scene.frame_end
+    shutter_mult = context.scene.eevee.motion_blur_shutter
+    samples=context.scene.eevee.motion_blur_samples
+
+    for frame in range(startframe, endframe+1, context.scene.frame_step):
+        renderMBx1fr(frame, shutter_mult, samples)
         
     # closing notice
     print("EMB Render completed in " + str( datetime.now() - startTime)) 
@@ -228,25 +234,28 @@ def renderMB_sequence(startframe = bpy.context.scene.frame_start , endframe = bp
 # ÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
 #                      CLASSES 
 
-class render_eevee_forceblur_frame(bpy.types.Operator):
+class RENDER_OT_render_eevee_forceblur_frame(bpy.types.Operator):
     """Render frame in eevee with motion blur"""
     bl_idname = "render.render_eevee_forceblur_frame"
     bl_label = "Render motion blur frame"
 
     def execute(self, context):
-
-        renderMBx1fr()
+        frame=context.scene.frame_current
+        shutter_mult = context.scene.eevee.motion_blur_shutter
+        samples=context.scene.eevee.motion_blur_samples
+        renderMBx1fr(frame, shutter_mult, samples)
 
         return {'FINISHED'}
     
-class render_eevee_forceblur_sequence(bpy.types.Operator):
+class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
     """Render sequence in eevee with motion blur"""
     bl_idname = "render.render_eevee_forceblur_sequence"
     bl_label = "Render motion blur sequence"
 
     def execute(self, context):
-
-        renderMB_sequence()
+        startframe = bpy.context.scene.frame_start
+        endframe = bpy.context.scene.frame_end
+        renderMB_sequence(startframe, endframe, context)
 
         return {'FINISHED'}
     
@@ -286,8 +295,8 @@ class RENDER_PT_force_emb_panel(bpy.types.Panel):
 # Registration
 
 def register():
-    bpy.utils.register_class(render_eevee_forceblur_frame)
-    bpy.utils.register_class(render_eevee_forceblur_sequence)
+    bpy.utils.register_class(RENDER_OT_render_eevee_forceblur_frame)
+    bpy.utils.register_class(RENDER_OT_render_eevee_forceblur_sequence)
     bpy.utils.register_class(RENDER_PT_force_emb_panel)
 
 
