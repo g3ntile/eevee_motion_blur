@@ -133,10 +133,10 @@ def renderMBx1fr(realframe, shutter_mult, samples):
     #### inicializa la imagen 
     image_name = '__motion_blur_temp__'
 
-    if image_name in D.images:
-        D.images.remove(D.images[image_name])
-    image_object = D.images.new(name=image_name, width=renderWidth, height=renderHeight)
-    image_object = D.images[image_name]
+    if image_name in bpy.data.images:
+        bpy.data.images.remove(bpy.data.images[image_name])
+    image_object = bpy.data.images.new(name=image_name, width=renderWidth, height=renderHeight)
+    image_object = bpy.data.images[image_name]
     num_pixels = len(image_object.pixels)
 
     # Expand the timeline to render subframes
@@ -183,7 +183,7 @@ def renderMBx1fr(realframe, shutter_mult, samples):
     # image_object.filepath_raw = myRenderFolder+ "" + "%04d" % realframe + ".exr"
     image_object.filepath_raw = myRenderFolder + "%04d" % realframe + ".exr"
     image_object.file_format = 'OPEN_EXR'
-    #image_object.filepath_raw = "//__testBlend.png"
+    #image_object.filepath_raw = "//__testBlenbpy.data.png"
     #image_object.file_format = 'PNG'
     image_object.save()
 
