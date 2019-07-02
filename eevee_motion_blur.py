@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 1),
+    "version": (0, 2),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -16,12 +16,6 @@ import bpy
 from datetime import datetime
 import numpy as np
 from mathutils import *; from math import *
-
-
-C = bpy.context
-D = bpy.data
-
-# exec time
 
 
 # FUNCTIONS
@@ -39,26 +33,47 @@ def mbCompositorSetup():
         if (node.type == 'VIEWER'):
             return
     
-    # store the socket linked to output
+    # store the socket linked to output RGB
     fromSocket = tree.nodes["Composite"].inputs[0].links[0].from_socket
     outSocket = tree.nodes["Composite"].inputs[0]
-    # bpy.data.node_groups["Compositing Nodetree"].nodes["Composite"].use_alpha = False
+
     # create output node
     v = tree.nodes.new('CompositorNodeViewer')  
     v.location[0] = tree.nodes["Composite"].viewLocation[0]
     v.location[1] = tree.nodes["Composite"].viewLocation[1]-150
     #v.location = 750,210
-    v.use_alpha = False
+    v.use_alpha = True
     
-    # create Reroute node 
+    # create Reroute node RGB
     l = tree.nodes.new('NodeReroute')
     l.location[0] = tree.nodes["Composite"].viewLocation[0] -20
     l.location[1] = tree.nodes["Composite"].viewLocation[1]-150
-    
+    l.label = "RGB"
+
+
     # links both Nodes via reroute to share input
+    # RGB
     links.new(fromSocket, l.inputs[0])  # link Image output to Viewer input
     links.new(l.outputs[0], v.inputs[0]) 
     links.new(l.outputs[0], outSocket) 
+    
+    # alpha 
+    if (tree.nodes["Composite"].inputs[1].links):
+        fromSocket_alpha = tree.nodes["Composite"].inputs[1].links[0].from_socket
+        outSocket_alpha = tree.nodes["Composite"].inputs[1]
+        
+        # create Reroute node ALPHA
+        l_a = tree.nodes.new('NodeReroute')
+        l_a.location[0] = tree.nodes["Composite"].viewLocation[0] -20
+        l_a.location[1] = tree.nodes["Composite"].viewLocation[1]-180
+        l_a.label = "ALPHA"
+
+        # alpha
+        links.new(fromSocket_alpha, l_a.inputs[0])  # link Image output to Viewer input
+        links.new(l_a.outputs[0], v.inputs[1]) 
+        links.new(l_a.outputs[0], outSocket_alpha) 
+
+
     return
 
 # render to array
@@ -66,7 +81,6 @@ def renderToArray(subfr):
     """Takes the output of a Viewer node and dumps it to a numpy array"""
     # move playhead
     bpy.context.scene.frame_set(subfr)
-    # print(bpy.context.scene.frame_current)
     # render
     bpy.ops.render.render()
     # collect image
@@ -94,7 +108,7 @@ def renderMBx1fr(realframe, shutter_mult, samples):
     print("shutter: " + str(shutter_mult))
 
     # Samples / amount of subframes to actually render based on shutter angle
-    effective_subframes = int(samples) # ceil(fr_multiplier*shutter_mult)
+    effective_subframes = int(samples) 
     print("samples: " + str(effective_subframes))
 
     # total number of subframes including unrendered
@@ -102,7 +116,7 @@ def renderMBx1fr(realframe, shutter_mult, samples):
     print("total subframes interpolated: " + str(fr_multiplier))
 
     # contribution of each subframe to real frame
-    subframe_ratio = 1/effective_subframes #1/fr_multiplier
+    subframe_ratio = 1/effective_subframes 
     print("samples ratio: " + str(subframe_ratio))
 
     # where to save the files
@@ -117,6 +131,7 @@ def renderMBx1fr(realframe, shutter_mult, samples):
     # gamma de la imagen final
     mygamma = 2.2
     # Rebake: true for recalculate all bakes after the insertion of subframes, for better accuracy
+    # in place for future implementations
     rebake = False
 
     # Original values backup
@@ -135,7 +150,10 @@ def renderMBx1fr(realframe, shutter_mult, samples):
 
     if image_name in bpy.data.images:
         bpy.data.images.remove(bpy.data.images[image_name])
-    image_object = bpy.data.images.new(name=image_name, width=renderWidth, height=renderHeight)
+    image_object = bpy.data.images.new(name=image_name, alpha=True, width=renderWidth, height=renderHeight)
+    # image_object.use_alpha = True
+    image_object.alpha_mode = 'STRAIGHT'
+
     image_object = bpy.data.images[image_name]
     num_pixels = len(image_object.pixels)
 
@@ -264,7 +282,7 @@ class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur"
+    bl_label = "Forced Eevee motion blur 0.2"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
