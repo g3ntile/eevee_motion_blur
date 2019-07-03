@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 21),
+    "version": (0, 22),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -112,6 +112,9 @@ def renderMBx1fr(realframe, shutter_mult, samples):
         effective_subframes = int(samples) 
         print("samples: " + str(effective_subframes))
 
+        # clamp shutter to 1
+        shutter_mult = min(1, shutter_mult)
+
         # total number of subframes including unrendered
         fr_multiplier = int(effective_subframes/shutter_mult) # 12
         print("total subframes interpolated: " + str(fr_multiplier))
@@ -206,20 +209,6 @@ def renderMBx1fr(realframe, shutter_mult, samples):
         #image_object.file_format = 'PNG'
         image_object.save()
 
-
-        ## To frame 1
-        ## render + save to temp
-        ## advance frame and repeat until effective_subframes
-        ## open all rendered subframes and average
-        ## save to render folder as frame 1
-        ## advance 1*fr_multiplier frames and repeat
-
-
-        # revert to previous values
-        #bpy.context.scene.frame_end /= fr_multiplier
-        #bpy.context.scene.render.fps /= fr_multiplier
-
-
         # Restore the timeline 
         ###bpy.context.scene.frame_end /= fr_multiplier
         bpy.context.scene.render.fps /= fr_multiplier
@@ -299,7 +288,7 @@ class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.21"
+    bl_label = "Forced Eevee motion blur 0.22"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
