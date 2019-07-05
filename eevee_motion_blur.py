@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 22),
+    "version": (0, 31),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -15,8 +15,14 @@ bl_info = {
 import bpy
 from datetime import datetime
 import numpy as np
+import math
 from mathutils import *; from math import *
 
+from bpy_extras.object_utils import world_to_camera_view
+import array as arr
+from bpy.props import FloatProperty
+from bpy.props import IntProperty
+from bpy.props import BoolProperty
 
 # FUNCTIONS
 # ###################################
@@ -93,11 +99,13 @@ def renderToArray(subfr):
 
 # ###################################
 # fn render with MB
-def renderMBx1fr(realframe, shutter_mult, samples):
+def renderMBx1fr(realframe, shutter_mult, samples,context):
     """Renders one frame with motion blur and saves to output folder"""
     try: 
         # timer
         startTime = datetime.now()
+        C = context
+        scene = C.scene
         
         # setup compositor
         mbCompositorSetup()
@@ -109,18 +117,38 @@ def renderMBx1fr(realframe, shutter_mult, samples):
         print("shutter: " + str(shutter_mult))
 
         # Samples / amount of subframes to actually render based on shutter angle
-        effective_subframes = int(samples) 
-        print("samples: " + str(effective_subframes))
+        
+        # adaptive samples version
+        if (scene.emb_addon_use_adaptive):
+            # proteccion contra valores inconsistentes
+            if (scene.emb_addon_max_samples < scene.emb_addon_min_samples):
+                scene.emb_addon_max_samples = scene.emb_addon_min_samples
+            
+            maxDelta = getMaxDelta(context)
+            # print("Max delta is: " + str(maxDelta))
+            samples = ceil( (maxDelta) / scene.emb_addon_adaptive_blur_samples) 
+            if (samples > scene.emb_addon_max_samples):
+                samples = scene.emb_addon_max_samples
+            if (samples < scene.emb_addon_min_samples):
+                samples = scene.emb_addon_min_samples
+            print ( "using adapting sampling at "+ str(samples) + " frames")
+        
+        else :
+            # the samples parameter of the function is becoming obsolete
+            # should be eliminated
+            samples = ceil(scene.eevee.motion_blur_samples) 
+        
+            print("static sampling: " + str(samples))
 
         # clamp shutter to 1
         shutter_mult = min(1, shutter_mult)
 
         # total number of subframes including unrendered
-        fr_multiplier = int(effective_subframes/shutter_mult) # 12
+        fr_multiplier = ceil(samples/shutter_mult) # 12
         print("total subframes interpolated: " + str(fr_multiplier))
 
         # contribution of each subframe to real frame
-        subframe_ratio = 1/effective_subframes 
+        subframe_ratio = 1/samples 
         print("samples ratio: " + str(subframe_ratio))
 
         # where to save the files
@@ -189,15 +217,15 @@ def renderMBx1fr(realframe, shutter_mult, samples):
         
         expanded_frame = realframe * fr_multiplier
         # inicializa el array y renderiza el primer frame
-        myrender_arr = renderToArray(expanded_frame)/effective_subframes
+        myrender_arr = renderToArray(expanded_frame)/samples
         print("frame: " + str(realframe) + ".0 // " + str(expanded_frame))
         
         # render remaining subframes
-        for subfr in range(expanded_frame+1, expanded_frame + effective_subframes):
+        for subfr in range(expanded_frame+1, expanded_frame + samples):
             print("frame: " + str(realframe) + "." + str(subfr-expanded_frame)+ " // " + str(subfr))
             
             temparray = renderToArray(subfr)
-            myrender_arr += (temparray/effective_subframes)
+            myrender_arr += (temparray/samples)
 
         # assign array to image with gamma    
         image_object.pixels = myrender_arr **(1/mygamma)
@@ -243,10 +271,12 @@ def renderMB_sequence(startframe, endframe, context):
         startframe = context.scene.frame_start
         endframe = context.scene.frame_end
         shutter_mult = context.scene.eevee.motion_blur_shutter
+        
+        # classic
         samples=context.scene.eevee.motion_blur_samples
-
+        
         for frame in range(startframe, endframe+1, context.scene.frame_step):
-            renderMBx1fr(frame, shutter_mult, samples)
+            renderMBx1fr(frame, shutter_mult, samples, context)
             
         # closing notice
         print("EMB Render completed in " + str( datetime.now() - startTime)) 
@@ -254,6 +284,160 @@ def renderMB_sequence(startframe, endframe, context):
         print(' \n\nCANCELED')
         raise
     return
+
+
+
+#############################
+# FOR ADAPTIVE SAMPLING
+
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+# fn convert bounding box to camera space
+#           returns bounding box in camera space
+def obBoxToCamera(obj, context):
+    print("\n\n2 . obBoxToCamera")
+    scene = bpy.context.scene
+    # obj = bpy.context.object  # or bpy.data.objects['cube']
+    bb_vertices = [Vector(v) for v in obj.bound_box]
+    mat = obj.matrix_world
+    world_bb_vertices = [mat @ v for v in bb_vertices]
+
+    co_2d = [world_to_camera_view(scene, scene.camera, v) for v in world_bb_vertices]  # from 0 to 1
+    
+    #for p in pixel_coords:
+    #    print('{p[0]:.0f}, {p[1]:.0f}'.format(p=p))
+    
+    # devuelve una lista de las coordenadas 2D de los 8 vertices de la bounding box
+    return(co_2d)
+    #in pixels
+    #return(pixel_coords)
+
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+
+#fn get object delta in camera
+# returns a list with the max delta
+# result must be in pixels not camera space
+def getObCameraDelta(obj, context):
+    print("\n\n3 . getObCameraDelta")
+    C = bpy.context
+    print (C.scene.frame_current)
+    
+    #get next frame
+    C.scene.frame_set (C.scene.frame_current + 1)
+    # pasa los 8 vertices del bounding box a camera space (redundante esto se puede optimizar)
+    ob_next = obBoxToCamera(obj, context)
+    
+    #get cur frame
+    C.scene.frame_set (C.scene.frame_current - 1)
+    print (C.scene.frame_current)
+    # pasa los 8 vertices del bounding box a camera space
+    ob_current = obBoxToCamera(obj, context)
+    
+    # vertices usables 0 y 6:
+    v1 = (ob_current[0])
+    v2 = (ob_next[0])
+    print("v1: " + str(v1))
+    
+    c1 = ((v2[0]-v1[0]) ** 2 )
+    c2 = ((v2[1]-v1[1]) ** 2 )
+    h = math.sqrt(c1+c2)
+    print(str(c1) + "  --:-- " + str(c2))
+    print (h)
+    h = math.sqrt(h)
+    print (h)
+    
+    delta_a = get_2d_delta(ob_current[0], ob_next[0])
+    delta_b = get_2d_delta(ob_current[6], ob_next[6])
+    # delta = math.sqrt(  ((v2[0]-v1[0]) **2) + ((v2[1]+v1[1])**2) )
+    #print("delta in pixels")
+    #print(delta)
+    return (max(delta_a,delta_b))
+
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+# fn get_2d_delta
+# calculate 2D deltas 
+# gets input in cam space, result is in pixels
+def get_2d_delta(v1,v2):
+    v1 = camSpaceToPixels(v1)
+    v2 = camSpaceToPixels(v2)
+    # Pythagoras
+    c1 = ((v2[0]-v1[0]) ** 2 )
+    c2 = ((v2[1]-v1[1]) ** 2 )
+    return( math.sqrt(c1+c2) )
+    
+    
+
+    
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+#fn guess if obj is inside camera, return delta in pixels
+def isObInCamera(obj, context):
+    print("\n\n1. isObInCamera checking " + obj.name)
+    xs= [x[0] for x in obBoxToCamera(obj, context)]
+    ys= [x[1] for x in obBoxToCamera(obj, context)]
+    print ("\tmin xs: "+ str(min (xs)))
+    print("\tmin ys: "+ str(min(ys)))
+    #zs= [x[2] for x in obBoxToCamera(obj, context)] #obsolete
+    
+    # discriminate obs inside camera plane from the ones outside
+    if (min(xs) < 1 and min(ys) < 1):
+        if ((max(xs) > 0 ) and (max(ys) > 0)):
+            print("\n\n" + obj.name + " is in camera!")
+            return (getObCameraDelta(obj, context))
+        else :
+            print("\n\n" + obj.name + " is NOT in camera!")
+            return ([])
+    else :
+        print("\n\n" + obj.name + " is NOT in camera!")
+        return ([])
+    
+    print("min xs: ")
+    print (min(xs))
+    print("miys: ") 
+    print (min(ys))
+    print("max xs: ") 
+    print (max (xs))
+    print("max ys: ") 
+    print (max (ys))
+    
+    
+
+    return()
+
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+# fn convierte camera space a pixels toma un list [x,y]
+def camSpaceToPixels(pos):
+    scene = bpy.context.scene
+    render_scale = scene.render.resolution_percentage / 100
+    render_size = list(int(res) * render_scale for res in [scene.render.resolution_x, scene.render.resolution_y])
+    pixel_coords = arr.array('f')
+    pix_x = pos[0] * render_size[0]
+    pix_y = pos[1] * render_size[1]
+    
+    return([pix_x, pix_y] )
+
+
+#print(get_2d_delta([0,0],[3,4]))
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+# ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
+#––––––––––––––––––––––––––––––––––––––––––––––––––
+# check all objs in scene
+
+def getMaxDelta(context):
+    
+    C = context
+
+    mydeltas = [0]
+
+    for obj in C.scene.objects:
+        if (obj.hide_render == False):
+            delta = isObInCamera(obj, C)
+        if (delta):
+            mydeltas.append(delta)
+
+    if (mydeltas):
+        print (mydeltas)
+        print("\n\tmaximum delta in px is: ")
+        print(max(mydeltas))
+    return(abs(max(mydeltas)))
 
 # ÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
 #                      CLASSES 
@@ -267,7 +451,7 @@ class RENDER_OT_render_eevee_forceblur_frame(bpy.types.Operator):
         frame=context.scene.frame_current
         shutter_mult = context.scene.eevee.motion_blur_shutter
         samples=context.scene.eevee.motion_blur_samples
-        renderMBx1fr(frame, shutter_mult, samples)
+        renderMBx1fr(frame, shutter_mult, samples, context)
 
         return {'FINISHED'}
     
@@ -288,7 +472,7 @@ class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.22"
+    bl_label = "Forced Eevee motion blur 0.31"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -312,8 +496,16 @@ class RENDER_PT_force_emb_panel(bpy.types.Panel):
         row.prop(scene, "frame_start")
         row.prop(scene, "frame_end")
         row = layout.row()
+        row.prop(scene, "emb_addon_use_adaptive")
+        row = layout.row()
+        row.prop(scene, "emb_addon_adaptive_blur_samples")
+        row = layout.row()
+        row.prop(scene, "emb_addon_min_samples")
+        row.prop(scene, "emb_addon_max_samples")
+        row = layout.row()
         row.prop(scene.eevee, "motion_blur_samples")
         row.prop(scene.eevee, "motion_blur_shutter")
+
 
 
 # Registration
@@ -322,9 +514,40 @@ def register():
     bpy.utils.register_class(RENDER_OT_render_eevee_forceblur_frame)
     bpy.utils.register_class(RENDER_OT_render_eevee_forceblur_sequence)
     bpy.utils.register_class(RENDER_PT_force_emb_panel)
+    
+    # custom properties
+    # adaptive samples distance trigger
+    bpy.types.Scene.emb_addon_adaptive_blur_samples = FloatProperty(
+    default=10,
+    name="Pixel tolerance",
+    description = "distance in pixels an object must move to trigger another sample")
+    # use adaptive or not
+    bpy.types.Scene.emb_addon_use_adaptive = BoolProperty(
+    default=True,
+    name="Adaptive sampling",
+    description = "evaluate samples each frame based on movement")
+    
+    # min samples
+    bpy.types.Scene.emb_addon_min_samples = IntProperty(
+    default=1,
+    name="minimum samples",
+    description = "",
+    min=1)
+    
+    # max samples
+    bpy.types.Scene.emb_addon_max_samples = IntProperty(
+    default=20,
+    name="maximum samples",
+    description = "")
+
 
 
 def unregister():
+    del bpy.types.Scene.emb_addon_adaptive_blur_samples
+    del bpy.types.Scene.emb_addon_use_adaptive
+    del bpy.types.Scene.emb_addon_min_samples
+    del bpy.types.Scene.emb_addon_max_samples
+    
     bpy.utils.unregister_class(RENDER_OT_render_eevee_forceblur_frame)
     bpy.utils.unregister_class(RENDER_OT_render_eevee_forceblur_sequence)
     bpy.utils.unregister_class(RENDER_PT_force_emb_panel)
