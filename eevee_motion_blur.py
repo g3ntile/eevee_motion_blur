@@ -294,7 +294,7 @@ def renderMB_sequence(startframe, endframe, context):
 # fn convert bounding box to camera space
 #           returns bounding box in camera space
 def obBoxToCamera(obj, context):
-    print("\n\n2 . obBoxToCamera")
+    # print("\n\n2 . obBoxToCamera")
     scene = bpy.context.scene
     # obj = bpy.context.object  # or bpy.data.objects['cube']
     bb_vertices = [Vector(v) for v in obj.bound_box]
@@ -317,7 +317,7 @@ def obBoxToCamera(obj, context):
 # returns a list with the max delta
 # result must be in pixels not camera space
 def getObCameraDelta(obj, context):
-    print("\n\n3 . getObCameraDelta")
+    # print("\n\n3 . getObCameraDelta")
     C = bpy.context
     print (C.scene.frame_current)
     
@@ -370,11 +370,11 @@ def get_2d_delta(v1,v2):
 # ≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠≠
 #fn guess if obj is inside camera, return delta in pixels
 def isObInCamera(obj, context):
-    print("\n\n1. isObInCamera checking " + obj.name)
+    # print("\n\n1. isObInCamera checking " + obj.name)
     xs= [x[0] for x in obBoxToCamera(obj, context)]
     ys= [x[1] for x in obBoxToCamera(obj, context)]
-    print ("\tmin xs: "+ str(min (xs)))
-    print("\tmin ys: "+ str(min(ys)))
+    # print ("\tmin xs: "+ str(min (xs)))
+    # print("\tmin ys: "+ str(min(ys)))
     #zs= [x[2] for x in obBoxToCamera(obj, context)] #obsolete
     
     # discriminate obs inside camera plane from the ones outside
@@ -389,14 +389,14 @@ def isObInCamera(obj, context):
         print("\n\n" + obj.name + " is NOT in camera!")
         return ([])
     
-    print("min xs: ")
-    print (min(xs))
-    print("miys: ") 
-    print (min(ys))
-    print("max xs: ") 
-    print (max (xs))
-    print("max ys: ") 
-    print (max (ys))
+    # print("min xs: ")
+    # print (min(xs))
+    # print("miys: ") 
+    # print (min(ys))
+    # print("max xs: ") 
+    # print (max (xs))
+    # print("max ys: ") 
+    # print (max (ys))
     
     
 
@@ -428,7 +428,7 @@ def getMaxDelta(context):
     mydeltas = [0]
 
     for obj in C.scene.objects:
-        if (obj.hide_render == False):
+        if ((obj.hide_render == False) and (obj.type == 'MESH') ):
             delta = isObInCamera(obj, C)
         try:
             if (delta):
