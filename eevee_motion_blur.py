@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 31),
+    "version": (0, 31, 1),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -474,7 +474,7 @@ class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.31"
+    bl_label = "Forced Eevee motion blur 0.31.1"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -498,15 +498,23 @@ class RENDER_PT_force_emb_panel(bpy.types.Panel):
         row.prop(scene, "frame_start")
         row.prop(scene, "frame_end")
         row = layout.row()
-        row.prop(scene, "emb_addon_use_adaptive")
+        col = layout.column(align=True)
+        col.active = not (scene.emb_addon_use_adaptive)
+        col.prop(scene.eevee, "motion_blur_samples")
+        col = layout.column(align=True)
+        col.prop(scene.eevee, "motion_blur_shutter")
+        
+        col = layout.column(align=True)
         row = layout.row()
-        row.prop(scene, "emb_addon_adaptive_blur_samples")
+        col.prop(scene, "emb_addon_use_adaptive")
+        
+        col.active = scene.emb_addon_use_adaptive
         row = layout.row()
-        row.prop(scene, "emb_addon_min_samples")
-        row.prop(scene, "emb_addon_max_samples")
+        col.prop(scene, "emb_addon_adaptive_blur_samples")
         row = layout.row()
-        row.prop(scene.eevee, "motion_blur_samples")
-        row.prop(scene.eevee, "motion_blur_shutter")
+        col.prop(scene, "emb_addon_min_samples")
+        col.prop(scene, "emb_addon_max_samples")
+        
 
 
 
