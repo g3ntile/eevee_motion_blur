@@ -430,9 +430,11 @@ def getMaxDelta(context):
     for obj in C.scene.objects:
         if (obj.hide_render == False):
             delta = isObInCamera(obj, C)
-        if (delta):
-            mydeltas.append(delta)
-
+        try:
+            if (delta):
+                mydeltas.append(delta)
+        except:
+            pass
     if (mydeltas):
         print (mydeltas)
         print("\n\tmaximum delta in px is: ")
