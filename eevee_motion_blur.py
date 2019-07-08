@@ -488,10 +488,6 @@ class RENDER_PT_force_emb_panel(bpy.types.Panel):
         row.prop(scene, "frame_start")
         row.prop(scene, "frame_end")
         
-        # Image gamma
-        row = layout.row()
-        row.prop(scene, "emb_addon_gamma")
-
         # Eevee native motion blur settings
         row = layout.row()
         col = layout.column(align=True)
@@ -511,6 +507,11 @@ class RENDER_PT_force_emb_panel(bpy.types.Panel):
         row = layout.row()
         col.prop(scene, "emb_addon_min_samples")
         col.prop(scene, "emb_addon_max_samples")
+        
+        # Image gamma
+        row = layout.row()
+        row.prop(scene, "emb_addon_gamma")
+
         
 # Registration
 
