@@ -547,8 +547,8 @@ def register():
     # gamma
     bpy.types.Scene.emb_addon_gamma = FloatProperty(
     default=2.35,
-    name="Gamma",
-    description = "gamma to compensate for inaccurate image saving")
+    name="Inverse gamma",
+    description = "inverse gamma to compensate for inaccurate image saving")
 
 def unregister():
     del bpy.types.Scene.emb_addon_adaptive_blur_samples
