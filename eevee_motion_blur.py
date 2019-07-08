@@ -161,7 +161,7 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         renderHeight = round(bpy.context.scene.render.resolution_y * resolution_factor)
         # gamma de la imagen final
         #mygamma = 2.2
-        mygamma = 2.35
+        mygamma = bpy.context.scene.emb_addon_gamma #2.35
         # Rebake: true for recalculate all bakes after the insertion of subframes, for better accuracy
         # in place for future implementations
         # but now with adaptive subsampling and retiming each frame is not a good idea
@@ -487,6 +487,10 @@ class RENDER_PT_force_emb_panel(bpy.types.Panel):
         row = layout.row()
         row.prop(scene, "frame_start")
         row.prop(scene, "frame_end")
+        
+        # Image gamma
+        row = layout.row()
+        row.prop(scene, "emb_addon_gamma")
 
         # Eevee native motion blur settings
         row = layout.row()
@@ -539,12 +543,19 @@ def register():
     default=20,
     name="maximum samples",
     description = "")
+    
+    # gamma
+    bpy.types.Scene.emb_addon_gamma = FloatProperty(
+    default=2.35,
+    name="Gamma",
+    description = "gamma to compensate for inaccurate image saving")
 
 def unregister():
     del bpy.types.Scene.emb_addon_adaptive_blur_samples
     del bpy.types.Scene.emb_addon_use_adaptive
     del bpy.types.Scene.emb_addon_min_samples
     del bpy.types.Scene.emb_addon_max_samples
+    del bpy.types.Scene.emb_addon_gamma
     
     bpy.utils.unregister_class(RENDER_OT_render_eevee_forceblur_frame)
     bpy.utils.unregister_class(RENDER_OT_render_eevee_forceblur_sequence)
