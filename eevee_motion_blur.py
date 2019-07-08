@@ -546,7 +546,7 @@ def register():
     
     # gamma
     bpy.types.Scene.emb_addon_gamma = FloatProperty(
-    default=2.35,
+    default=2.2,
     name="Inverse gamma",
     description = "inverse gamma to compensate for inaccurate image saving")
 
