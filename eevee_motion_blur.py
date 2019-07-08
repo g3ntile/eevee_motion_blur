@@ -244,7 +244,7 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         image_object.file_format = bpy.context.scene.render.image_settings.file_format
         myRenderFolder
         image_object.filepath_raw = myRenderFolder + "%04d" % realframe + bpy.context.scene.render.file_extension
-        image_object.save_render(bpy.path.abspath(C.scene.render.filepath) + "%04d" % realframe + bpy.context.scene.render.file_extension)
+        image_object.save_render(filepath =  bpy.path.abspath(C.scene.render.filepath) + "%04d" % realframe + bpy.context.scene.render.file_extension, scene = C.scene )
         #image_object.save()
 
         # Restore the timeline 
