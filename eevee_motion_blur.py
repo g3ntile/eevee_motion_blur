@@ -1,11 +1,11 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 31, 2),
+    "version": (0, 31, 3),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
-    "warning": "",
+    "warning": "The gamma use changed from inverse to direct, if you used the former default 2.2 you should now set it to 0.454545, for other values you should set it now to 1/former_value. Sorry for the inconvenience",
     "wiki_url": "https://github.com/g3ntile/eevee_motion_blur/wiki",
     "tracker_url": "https://github.com/g3ntile/eevee_motion_blur",
     "category": "Render"
@@ -234,7 +234,7 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
             myrender_arr += (temparray/samples)
 
         # assign array to image with gamma    
-        image_object.pixels = myrender_arr **(1/mygamma)
+        image_object.pixels = myrender_arr **mygamma #(1/mygamma)
         #image_object.pixels = myrender_arr **(1/(mygamma*1.1))
         
         #image_object.pixels = myrender_arr 
@@ -462,7 +462,7 @@ class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.31.2"
+    bl_label = "Forced Eevee motion blur 0.31.3"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -547,8 +547,8 @@ def register():
     
     # gamma
     bpy.types.Scene.emb_addon_gamma = FloatProperty(
-    default=2.2,
-    name="Inverse gamma",
+    default=0.454545,
+    name="Gamma",
     description = "inverse gamma to compensate for inaccurate image saving")
 
 def unregister():
