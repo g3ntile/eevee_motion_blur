@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 4),
+    "version": (0, 4 , 1),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -115,15 +115,45 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         # timer
         startTime = datetime.now()
         
-        # –––––––––––––––
-        # variables setup
-        # –––––––––––––––
+        # –––––––––––––––––––
+        # 1. variables setup
+        # –––––––––––––––––––
         # clamp shutter to 1
         shutter_mult = min(1, shutter_mult)
+        
+        
+        #Setup variable sampling
+        
+        # a. adaptive sampling
+        if (scene.eeveeMotionBlur_vars.use_adaptive):
+            # proteccion contra valores inconsistentes
+            if (scene.eeveeMotionBlur_vars.max_samples < scene.eeveeMotionBlur_vars.min_samples):
+                scene.eeveeMotionBlur_vars.max_samples = scene.eeveeMotionBlur_vars.min_samples
+            
+            maxDelta = getMaxDelta(context)
+            # print("Max delta is: " + str(maxDelta))
+            samples = ceil((maxDelta*shutter_mult) / scene.eeveeMotionBlur_vars.pixel_tolerance) #ceil( (maxDelta) / scene.eeveeMotionBlur_vars.adaptive_blur_samples) 
+            
+            if (samples > scene.eeveeMotionBlur_vars.max_samples):
+                samples = scene.eeveeMotionBlur_vars.max_samples
+            if (samples < scene.eeveeMotionBlur_vars.min_samples):
+                samples = scene.eeveeMotionBlur_vars.min_samples
+            if (samples == 0):
+                samples = 1
+            
+        # b. static sampling
+        else :
+            # static samples
+            samples = ceil(scene.eevee.motion_blur_samples) 
+            
+        #
+        #
+        
+        
+
 
         # total number of subframes including unrendered
         fr_multiplier = ceil(samples/shutter_mult) # 12
-        
         
         # contribution of each subframe to real frame
         subframe_ratio = 1/samples 
@@ -159,35 +189,12 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         num_pixels = len(image_object.pixels)
         
         # –––––––––––––––––––
-        # 1. Setup Compositor
+        # 2. Setup Compositor
         mbCompositorSetup()
         
-        # –––––––––––––––––––
-        # 2. Setup sampling
         
-        # a. adaptive sampling
-        if (scene.eeveeMotionBlur_vars.use_adaptive):
-            # proteccion contra valores inconsistentes
-            if (scene.eeveeMotionBlur_vars.max_samples < scene.eeveeMotionBlur_vars.min_samples):
-                scene.eeveeMotionBlur_vars.max_samples = scene.eeveeMotionBlur_vars.min_samples
-            
-            maxDelta = getMaxDelta(context)
-            # print("Max delta is: " + str(maxDelta))
-            samples = ceil(maxDelta / scene.eeveeMotionBlur_vars.pixel_tolerance) #ceil( (maxDelta) / scene.eeveeMotionBlur_vars.adaptive_blur_samples) 
-            
-            if (samples > scene.eeveeMotionBlur_vars.max_samples):
-                samples = scene.eeveeMotionBlur_vars.max_samples
-            if (samples < scene.eeveeMotionBlur_vars.min_samples):
-                samples = scene.eeveeMotionBlur_vars.min_samples
-            if (samples == 0):
-                samples = 1
-            
-            
-        # b. static sampling
-        else :
-            # static samples
-            samples = ceil(scene.eevee.motion_blur_samples) 
-            
+        
+        
         print ('rendering ' + str(samples) + ' subframe samples')
         # –––––––––––––––––––
         # 3. Render       
@@ -460,7 +467,7 @@ class eeveeMotionBlur_variables(bpy.types.PropertyGroup):
     pixel_tolerance : bpy.props.FloatProperty(
         name="Pixel tolerance",
         description="distance in pixels an object must move to trigger another sample",
-        default=10
+        default=5
     )
     use_adaptive : bpy.props.BoolProperty(
         name="Adaptive sampling",
@@ -490,7 +497,7 @@ class eeveeMotionBlur_variables(bpy.types.PropertyGroup):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.4"
+    bl_label = "Forced Eevee motion blur 0.4.1"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
