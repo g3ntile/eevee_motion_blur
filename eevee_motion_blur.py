@@ -121,7 +121,6 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         # clamp shutter to 1
         shutter_mult = min(1, shutter_mult)
         
-        
         #Setup variable sampling
         
         # a. adaptive sampling
@@ -145,20 +144,14 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         else :
             # static samples
             samples = ceil(scene.eevee.motion_blur_samples) 
-            
-        #
-        #
         
-        
-
-
         # total number of subframes including unrendered
         fr_multiplier = ceil(samples/shutter_mult) # 12
         
         # contribution of each subframe to real frame
         subframe_ratio = 1/samples 
         
-        # incremento temporal de cada subframe 
+        # time step for each subframe 
         substep = 1/fr_multiplier
         
         # where to save the files
@@ -178,7 +171,7 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         orig_mb = bpy.context.scene.eevee.use_motion_blur
         bpy.context.scene.eevee.use_motion_blur = False
         
-        #### inicializa la imagen 
+        #### temp image setup
         image_name = '__motion_blur_temp__'
         if image_name in bpy.data.images:
             bpy.data.images.remove(bpy.data.images[image_name])
@@ -194,7 +187,7 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         
         
         
-        
+        # 
         print ('rendering ' + str(samples) + ' subframe samples')
         # –––––––––––––––––––
         # 3. Render       
@@ -247,6 +240,7 @@ def renderMB_sequence(startframe, endframe, context):
         
         for frame in range(startframe, endframe+1, context.scene.frame_step):
             renderMBx1fr(frame, shutter_mult, samples, context)
+            print ("rendered frame "+ str(frame) + "/"+str(endframe))
             
         # closing notice
         print("EMB Sequence Render completed in " + str( datetime.now() - startTime)) 
@@ -362,7 +356,7 @@ def isObInCamera(obj, context):
     return
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 # ----------------------------- fn camSpaceToPixels ----------------------
-# ------------ convierte camera space a pixels toma un list [x,y] --------
+# ----------- converts cam space to pixels, input is a list [x,y] --------
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 def camSpaceToPixels(pos):
@@ -377,8 +371,9 @@ def camSpaceToPixels(pos):
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 # ----------------------------- fn getMaxDelta ---------------------------
-# ------------ busca en todos los objetos de la escena cuales ------------
-# ------------ están en camara y devuelve el máximo delta ---------------- 
+# -------------- loops through all objects in scene, guesses  ------------
+# ---------- which are in camera view and returns the max delta ---------- 
+# ------------  meaning maximum speed in pixels/frame found --------------
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 # check all objs in scene
@@ -394,18 +389,17 @@ def getMaxDelta(context):
             
             delta = isObInCamera(obj, C)
             try:
-                #print(delta)
                 if (delta):
-                    print("––––––––––––––––––––")
-                    print(obj.type)
-                    print("• " + obj.name + " is in camera moving at " + str(delta) + "px in this frame")
+                    print("–––––––––––––––––––– " + obj.type)
+                    print("• " + obj.name + " is in camera moving at " + str(delta) + "px per frame")
                     mydeltas.append(delta)
             except:
                 print ("except")
                 pass
     print('search ended') 
     maxd = abs(max(mydeltas))
-    print("max delta is "+ str(maxd) + "px")
+    print("max total frame delta is "+ str(maxd) + "px")
+    print("film exposed movement is " + str(maxd * (min(1, context.scene.eevee.motion_blur_shutter))) + "px")
     if (maxd == 0):
         print ("no movement found")
 
