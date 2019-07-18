@@ -217,10 +217,11 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         image_object.save_render(filepath =  bpy.path.abspath(C.scene.render.filepath) + "%04d" % realframe + bpy.context.scene.render.file_extension, scene = C.scene )
         #image_object.save()
         
-        print("EMB Render frame "+ str(realframe) + " in " + str( datetime.now() - startTime))
+        rendertime = ( datetime.now() - startTime)
+        print("EMB Render frame "+ str(realframe) + " in " + str( rendertime).split(".")[0])
     except:
         pass
-    return {'FINISHED'}
+    return (rendertime) # {'FINISHED'}
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 # ---------------------------- render sequence  --------------------------
@@ -239,8 +240,9 @@ def renderMB_sequence(startframe, endframe, context):
         samples=context.scene.eevee.motion_blur_samples
         
         for frame in range(startframe, endframe+1, context.scene.frame_step):
-            renderMBx1fr(frame, shutter_mult, samples, context)
+            framerendertime = renderMBx1fr(frame, shutter_mult, samples, context)
             print ("rendered frame "+ str(frame) + "/"+str(endframe))
+            print (str((endframe - frame)*framerendertime).split(".")[0] + " remaining ")
             
         # closing notice
         print("EMB Sequence Render completed in " + str( datetime.now() - startTime)) 
@@ -390,7 +392,7 @@ def getMaxDelta(context):
             delta = isObInCamera(obj, C)
             try:
                 if (delta):
-                    print("–––––––––––––––––––– " + obj.type)
+                    # print("–––––––––––––––––––– " + obj.type)
                     print("• " + obj.name + " is in camera moving at " + str(delta) + "px per frame")
                     mydeltas.append(delta)
             except:
