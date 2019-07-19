@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 4 , 2),
+    "version": (0, 4 , 3),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -498,7 +498,7 @@ class eeveeMotionBlur_variables(bpy.types.PropertyGroup):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.4.2"
+    bl_label = "Forced Eevee motion blur 0.4.3"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
