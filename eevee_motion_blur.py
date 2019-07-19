@@ -220,7 +220,9 @@ def renderMBx1fr(realframe, shutter_mult, samples,context):
         rendertime = ( datetime.now() - startTime)
         print("EMB Render frame "+ str(realframe) + " in " + str( rendertime).split(".")[0])
     except:
+        rendertime = False
         pass
+
     return (rendertime) # {'FINISHED'}
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -238,9 +240,13 @@ def renderMB_sequence(startframe, endframe, context):
         
         # classic
         samples=context.scene.eevee.motion_blur_samples
-        
+        formertime = False
         for frame in range(startframe, endframe+1, context.scene.frame_step):
             framerendertime = renderMBx1fr(frame, shutter_mult, samples, context)
+            # if not the first frame averages with former average
+            if (formertime) :
+                framerendertime = (formertime + framerendertime) / 2
+            formertime = framerendertime
             print ("rendered frame "+ str(frame) + "/"+str(endframe))
             print (str((endframe - frame)*framerendertime).split(".")[0] + " remaining ")
             
@@ -446,10 +452,9 @@ class RENDER_OT_render_eevee_forceblur_sequence(bpy.types.Operator):
         endframe = bpy.context.scene.frame_end
         try: 
             renderMB_sequence(startframe, endframe, context)
-        except ExitOK:
-            print("OK")
-        except ExitError:
-            print("Failed")
+        except :
+            print("!!!")
+        
 
         return {'FINISHED'}
 
