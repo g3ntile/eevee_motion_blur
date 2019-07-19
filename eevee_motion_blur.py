@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Eevee Motion Blur",
     "author": "Pablo Gentile",
-    "version": (0, 4 , 1),
+    "version": (0, 4 , 2),
     "blender": (2, 80, 0),
     "location": "Render Settings > Full Eevee Motion Blur",
     "description": "Real motion blur for Eevee",
@@ -50,15 +50,15 @@ def mbCompositorSetup():
 
     # create output node
     v = tree.nodes.new('CompositorNodeViewer')  
-    v.location[0] = tree.nodes["Composite"].viewLocation[0]
-    v.location[1] = tree.nodes["Composite"].viewLocation[1]-150
+    v.location[0] = tree.nodes["Composite"].location[0]
+    v.location[1] = tree.nodes["Composite"].location[1]-150
     #v.location = 750,210
     v.use_alpha = True
     
     # create Reroute node RGB
     l = tree.nodes.new('NodeReroute')
-    l.location[0] = tree.nodes["Composite"].viewLocation[0] -20
-    l.location[1] = tree.nodes["Composite"].viewLocation[1]-150
+    l.location[0] = tree.nodes["Composite"].location[0] -20
+    l.location[1] = tree.nodes["Composite"].location[1]-150
     l.label = "RGB"
 
 
@@ -75,8 +75,8 @@ def mbCompositorSetup():
         
         # create Reroute node ALPHA
         l_a = tree.nodes.new('NodeReroute')
-        l_a.location[0] = tree.nodes["Composite"].viewLocation[0] -20
-        l_a.location[1] = tree.nodes["Composite"].viewLocation[1]-180
+        l_a.location[0] = tree.nodes["Composite"].location[0] -20
+        l_a.location[1] = tree.nodes["Composite"].location[1]-180
         l_a.label = "ALPHA"
 
         # alpha
@@ -498,7 +498,7 @@ class eeveeMotionBlur_variables(bpy.types.PropertyGroup):
 
 class RENDER_PT_force_emb_panel(bpy.types.Panel):
     """Creates a Panel in the render properties window"""
-    bl_label = "Forced Eevee motion blur 0.4.1"
+    bl_label = "Forced Eevee motion blur 0.4.2"
     bl_idname = "RENDER_PT_force_emb"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
